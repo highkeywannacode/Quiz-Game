@@ -7,12 +7,31 @@ const path = require('path');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Middleware
-app.use(cors());
-app.use(bodyParser.json());
-app.use(express.static('.')); // Serve current directory files
+// Configure CORS for dynamic environments
+const allowedOrigins = [
+    'https://your-frontend-app-name.onrender.com', // **IMPORTANT: Replace with your actual Render frontend URL**
+    'http://localhost:8080',
+    'http://127.0.0.1:5500' // Common for local Live Server
+];
 
-// MongoDB connection - SECURE VERSION
+const corsOptions = {
+    origin: function (origin, callback) {
+        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
+app.use(bodyParser.json());
+
+// Serve current directory files (good for single-file deployments)
+app.use(express.static('.'));
+
+// MongoDB connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/quizDB';
 
 mongoose.connect(MONGODB_URI, {
@@ -60,6 +79,7 @@ app.get('/api/leaderboard', async (req, res) => {
         const users = await User.find().sort({ score: -1, quizDate: 1 }).limit(10);
         res.status(200).json(users);
     } catch (error) {
+        console.error('Error fetching leaderboard:', error);
         res.status(500).json({ message: 'Internal server error' });
     }
 });
