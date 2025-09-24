@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Khaitan & Co. - Quiz with KAI Assistant</title>
     <style>
+        /* ... (Your existing CSS code remains unchanged) ... */
         * {
             margin: 0;
             padding: 0;
@@ -642,6 +643,11 @@
     </div>
 
     <script>
+        // Set the backend URL dynamically based on the environment
+        const backendUrl = 'https://your-backend-app.onrender.com'; // **IMPORTANT: Update this with your actual Render backend URL**
+        // In your local environment, you would use:
+        // const backendUrl = 'http://localhost:3000';
+
         // Quiz Data
         const quizQuestions = [{
             type: "mcq",
@@ -1258,7 +1264,7 @@
 
         async function saveQuizResults(score) {
             try {
-                const response = await fetch('http://localhost:3000/api/quiz-results', {
+                const response = await fetch(`${backendUrl}/api/quiz-results`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -1285,7 +1291,7 @@
         
         async function showLeaderboard() {
             try {
-                const response = await // Use relative path - works in both environments fetch('/api/leaderboard')  // Or detect environment const API_BASE = window.location.hostname === 'localhost'      ? 'http://localhost:3000'      : 'https://quiz-game-icc3.onrender.com';  fetch(`${API_BASE}/api/leaderboard`);
+                const response = await fetch(`${backendUrl}/api/leaderboard`);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -1390,5 +1396,4 @@
         });
     </script>
 </body>
-
 </html>
