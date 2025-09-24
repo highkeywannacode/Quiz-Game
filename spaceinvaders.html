@@ -1,0 +1,483 @@
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        background: #000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        font-family: 'Courier New', monospace;
+        overflow: hidden;
+    }
+    
+    #gameContainer {
+        position: relative;
+        width: 800px;
+        height: 600px;
+    }
+    
+    canvas {
+        border: 2px solid #00ffff;
+        box-shadow: 0 0 20px #00ffff;
+    }
+    
+    #storyScreen, #instructions {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        color: #00ffff;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        padding: 20px;
+        z-index: 10;
+    }
+    
+    #instructions {
+        display: none;
+    }
+    
+    h1 {
+        font-size: 36px;
+        text-shadow: 0 0 10px #00ffff;
+        margin-bottom: 20px;
+    }
+    
+    p {
+        font-size: 18px;
+        line-height: 1.6;
+        margin: 10px 0;
+        max-width: 600px;
+    }
+    
+    .story-text {
+        border: 1px solid #00ffff;
+        padding: 20px;
+        margin: 10px;
+        background: rgba(0, 255, 255, 0.1);
+    }
+    
+    button {
+        background: #000;
+        color: #00ffff;
+        border: 2px solid #00ffff;
+        padding: 15px 30px;
+        font-size: 20px;
+        font-family: 'Courier New', monospace;
+        margin: 20px;
+        cursor: pointer;
+        text-shadow: 0 0 5px #00ffff;
+        box-shadow: 0 0 10px #00ffff;
+    }
+    
+    button:hover {
+        background: #00ffff;
+        color: #000;
+    }
+    
+    #hud {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        color: #00ffff;
+        font-size: 16px;
+        z-index: 5;
+    }
+    
+    #gameOver {
+        display: none;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        color: #00ffff;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 20;
+    }
+</style>
+<div id="gameContainer">
+    <div id="storyScreen">
+        <div class="story-text">
+            <h1>CHAOS REALM INVASION</h1>
+            <p>You were transporting crucial client documents through the digital ether...</p>
+            <p>Suddenly, a temporal rift opened! The demented Judge Larry and his Space Squad appeared!</p>
+            <p>"THE DOCUMENTS SHALL BE MINE!" he screeched, his ship glowing with chaotic energy.</p>
+            <p>Now trapped in the Chaos Realm, you must fight for survival!</p>
+            <p>Destroy Judge Larry's flagship to escape this digital nightmare!</p>
+        </div>
+        <button id="acceptMissionBtn">ACCEPT MISSION</button>
+    </div>
+    
+    <div id="instructions">
+        <div class="story-text">
+            <h1>MISSION BRIEFING</h1>
+            <p>🚀 CONTROLS:</p>
+            <p>← → Arrow Keys: Move Your Ship</p>
+            <p>Spacebar: Fire Plasma Cannon</p>
+            <p>ESC: Pause Game</p>
+            <br>
+            <p>🎯 OBJECTIVES:</p>
+            <p>- Destroy all Chaos Invaders</p>
+            <p>- Avoid enemy projectiles</p>
+            <p>- Find and destroy Judge Larry's flagship (red ship)</p>
+            <p>- Survive until the portal home opens!</p>
+        </div>
+        <button id="engageSystemsBtn">ENGAGE SYSTEMS</button>
+    </div>
+    
+    <div id="hud">
+        <div>SCORE: <span id="score">0</span></div>
+        <div>LIVES: <span id="lives">3</span></div>
+        <div>INVADERS LEFT: <span id="invadersCount">0</span></div>
+    </div>
+    
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    
+    <div id="gameOver">
+        <h1 id="gameOverTitle">MISSION RESULTS</h1>
+        <p id="gameOverText"></p>
+        <p>FINAL SCORE: <span id="finalScore">0</span></p>
+        <button id="continueQuizBtn">CONTINUE TO QUIZ</button>
+    </div>
+</div>
+
+<script>
+    // Game variables
+    let canvas, ctx;
+    let player, invaders, bullets, enemyBullets;
+    let gameRunning = false;
+    let score = 0;
+    let lives = 3;
+    let keys = {};
+    let lastShot = 0;
+    let shotDelay = 500;
+    let judgeLarrySpawned = false;
+    let lastEnemyShot = 0;
+    let enemyShotDelay = 2000;
+
+    // Game DOM elements
+    const storyScreen = document.getElementById('storyScreen');
+    const instructionsScreen = document.getElementById('instructions');
+    const gameOverScreen = document.getElementById('gameOver');
+    const acceptMissionBtn = document.getElementById('acceptMissionBtn');
+    const engageSystemsBtn = document.getElementById('engageSystemsBtn');
+    const continueQuizBtn = document.getElementById('continueQuizBtn');
+
+    // Initialize game
+    function init() {
+        canvas = document.getElementById('gameCanvas');
+        ctx = canvas.getContext('2d');
+        
+        player = {
+            x: canvas.width / 2 - 25,
+            y: canvas.height - 60,
+            width: 50,
+            height: 40,
+            speed: 8,
+            color: '#00ffff'
+        };
+        
+        createInvaders();
+        
+        bullets = [];
+        enemyBullets = [];
+        
+        document.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+            if (e.key === ' ' && gameRunning) {
+                shoot();
+            }
+            if (e.key === 'Escape') {
+                togglePause();
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+    }
+
+    function createInvaders() {
+        invaders = [];
+        const rows = 4;
+        const cols = 8;
+        const padding = 20;
+        
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                invaders.push({
+                    x: c * 70 + 50,
+                    y: r * 60 + 50,
+                    width: 40,
+                    height: 30,
+                    speed: 1,
+                    color: r === 0 ? '#ff4444' : '#ffffff',
+                    isLarry: r === 0 && c === Math.floor(cols/2),
+                    health: r === 0 ? 3 : 1,
+                    lastShot: 0
+                });
+            }
+        }
+    }
+
+    function shoot() {
+        const now = Date.now();
+        if (now - lastShot < shotDelay) return;
+        
+        lastShot = now;
+        bullets.push({
+            x: player.x + player.width / 2 - 2,
+            y: player.y,
+            width: 4,
+            height: 15,
+            speed: 10,
+            color: '#00ffff'
+        });
+    }
+
+    function enemyShoot(invader) {
+        const now = Date.now();
+        if (now - invader.lastShot < enemyShotDelay) return;
+        
+        invader.lastShot = now;
+        enemyBullets.push({
+            x: invader.x + invader.width / 2 - 2,
+            y: invader.y + invader.height,
+            width: 4,
+            height: 15,
+            speed: 5,
+            color: invader.isLarry ? '#ff0000' : '#ffffff'
+        });
+    }
+
+    function update() {
+        if (!gameRunning) return;
+        
+        if (keys['ArrowLeft'] && player.x > 0) {
+            player.x -= player.speed;
+        }
+        if (keys['ArrowRight'] && player.x < canvas.width - player.width) {
+            player.x += player.speed;
+        }
+        
+        invaders.forEach(invader => {
+            invader.x += invader.speed;
+            
+            if (invader.x <= 0 || invader.x >= canvas.width - invader.width) {
+                invaders.forEach(i => {
+                    i.speed *= -1;
+                    i.y += 20;
+                });
+            }
+            
+            if (Math.random() < 0.001) {
+                enemyShoot(invader);
+            }
+        });
+        
+        bullets.forEach((bullet, index) => {
+            bullet.y -= bullet.speed;
+            if (bullet.y < 0) {
+                bullets.splice(index, 1);
+            }
+        });
+        
+        enemyBullets.forEach((bullet, index) => {
+            bullet.y += bullet.speed;
+            if (bullet.y > canvas.height) {
+                enemyBullets.splice(index, 1);
+            }
+        });
+        
+        checkCollisions();
+        
+        if (invaders.length <= 5 && !judgeLarrySpawned) {
+            spawnJudgeLarry();
+        }
+        
+        if (invaders.length === 0) {
+            endGame(true);
+        }
+        
+        document.getElementById('score').textContent = score;
+        document.getElementById('lives').textContent = lives;
+        document.getElementById('invadersCount').textContent = invaders.length;
+    }
+
+    function spawnJudgeLarry() {
+        judgeLarrySpawned = true;
+        invaders.push({
+            x: canvas.width / 2 - 30,
+            y: 50,
+            width: 60,
+            height: 50,
+            speed: 2,
+            color: '#ff0000',
+            isLarry: true,
+            health: 10,
+            lastShot: 0
+        });
+    }
+
+    function checkCollisions() {
+        bullets.forEach((bullet, bIndex) => {
+            invaders.forEach((invader, iIndex) => {
+                if (bullet.x < invader.x + invader.width &&
+                    bullet.x + bullet.width > invader.x &&
+                    bullet.y < invader.y + invader.height &&
+                    bullet.y + bullet.height > invader.y) {
+                    
+                    invader.health--;
+                    if (invader.health <= 0) {
+                        invaders.splice(iIndex, 1);
+                        score += invader.isLarry ? 1000 : 100;
+                    }
+                    bullets.splice(bIndex, 1);
+                }
+            });
+        });
+        
+        enemyBullets.forEach((bullet, index) => {
+            if (bullet.x < player.x + player.width &&
+                bullet.x + bullet.width > player.x &&
+                bullet.y < player.y + player.height &&
+                bullet.y + bullet.height > player.y) {
+                
+                enemyBullets.splice(index, 1);
+                lives--;
+                
+                if (lives <= 0) {
+                    endGame(false);
+                }
+            }
+        });
+    }
+
+    function draw() {
+        ctx.fillStyle = '#000011';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        drawStars();
+        
+        drawShip(player.x, player.y, player.width, player.height, player.color);
+        
+        invaders.forEach(invader => {
+            drawShip(invader.x, invader.y, invader.width, invader.height, invader.color);
+            
+            if (invader.isLarry) {
+                ctx.fillStyle = '#333333';
+                ctx.fillRect(invader.x, invader.y - 10, invader.width, 5);
+                ctx.fillStyle = '#00ff00';
+                ctx.fillRect(invader.x, invader.y - 10, (invader.width * invader.health) / 10, 5);
+            }
+        });
+        
+        bullets.forEach(bullet => {
+            ctx.fillStyle = bullet.color;
+            ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+            
+            if (bullet.color === '#00ffff') {
+                ctx.shadowColor = '#00ffff';
+                ctx.shadowBlur = 5;
+                ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+                ctx.shadowBlur = 0;
+            }
+        });
+        
+        enemyBullets.forEach(bullet => {
+            ctx.fillStyle = bullet.color;
+            ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+        });
+    }
+
+    function drawShip(x, y, width, height, color) {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(x + width/2, y);
+        ctx.lineTo(x + width, y + height);
+        ctx.lineTo(x, y + height);
+        ctx.closePath();
+        ctx.fill();
+        
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 10;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+    }
+
+    function drawStars() {
+        ctx.fillStyle = '#ffffff';
+        for (let i = 0; i < 50; i++) {
+            const x = Math.sin(Date.now() * 0.001 + i) * 100 + i * 16;
+            const y = Math.cos(Date.now() * 0.001 + i) * 100 + i * 12;
+            const size = Math.random() * 2;
+            ctx.fillRect(x % canvas.width, y % canvas.height, size, size);
+        }
+    }
+
+    function gameLoop() {
+        update();
+        draw();
+        if (gameRunning) {
+            requestAnimationFrame(gameLoop);
+        }
+    }
+
+    function showInstructions() {
+        storyScreen.style.display = 'none';
+        instructionsScreen.style.display = 'flex';
+    }
+
+    function startGame() {
+        instructionsScreen.style.display = 'none';
+        gameRunning = true;
+        score = 0;
+        lives = 3;
+        judgeLarrySpawned = false;
+        init();
+        gameLoop();
+    }
+
+    function togglePause() {
+        gameRunning = !gameRunning;
+        if (gameRunning) {
+            gameLoop();
+        }
+    }
+
+    function endGame(victory) {
+        gameRunning = false;
+        document.getElementById('finalScore').textContent = score;
+        
+        if (victory) {
+            document.getElementById('gameOverTitle').textContent = 'VICTORY!';
+            document.getElementById('gameOverTitle').style.color = '#00ff00';
+            document.getElementById('gameOverText').textContent = 
+                "You've defeated Judge Larry and escaped the Chaos Realm! The documents are safe... for now.";
+        } else {
+            document.getElementById('gameOverTitle').textContent = 'MISSION FAILED';
+            document.getElementById('gameOverTitle').style.color = '#ff0000';
+            document.getElementById('gameOverText').textContent = 
+                "Judge Larry has captured the documents! The Chaos Realm claims another victim...";
+        }
+        
+        gameOverScreen.style.display = 'flex';
+    }
+
+    // Attach event listeners after the DOM is fully loaded and the script runs
+    storyScreen.style.display = 'flex';
+    acceptMissionBtn.addEventListener('click', showInstructions);
+    engageSystemsBtn.addEventListener('click', startGame);
+    continueQuizBtn.addEventListener('click', parent.resumeQuiz);
+
+</script>
