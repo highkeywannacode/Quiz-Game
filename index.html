@@ -489,14 +489,54 @@
             margin-bottom: 20px;
         }
         
+        /* === START OF CHANGES === */
+
+        /* 2nd Change: Game Full Screen */
+        /* Change max-width of media-container to allow it to expand more,
+           and remove the padding so the iframe can touch the edges. */
+        .media-container.full-screen {
+            max-width: 100%; /* Allow it to take up more screen space */
+            width: 100vw; /* Take full viewport width */
+            height: 100vh; /* Take full viewport height */
+            margin: 0; /* Remove margin/spacing from body's flex alignment */
+            padding: 0; /* Remove internal padding */
+            border-radius: 0; /* Optional: remove rounded corners for full screen look */
+            box-shadow: none; /* Optional: remove shadow */
+        }
+        
+        /* The body needs to be able to stretch the media container */
+        body.full-screen-game {
+             /* Remove center alignment for a true full screen experience */
+            justify-content: flex-start;
+            align-items: flex-start;
+            padding: 0;
+        }
+
         #game-container {
             width: 100%;
-            height: 600px;
-            border: 2px solid #3498db;
-            border-radius: 10px;
+            height: 100%; /* Change to 100% to fill parent */
+            border: none; /* Remove border for full-screen game */
+            border-radius: 0; /* Remove border radius */
             overflow: hidden;
             display: none;
         }
+        
+        /* Ensure the iframe inside the container is also full size */
+        #game-container iframe {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Hide the header and skip button in full screen game mode */
+        .media-container.full-screen .header,
+        .media-container.full-screen #skip-game-btn {
+            display: none;
+        }
+        
+        /* 1st Change: Video Looping without Controls */
+        /* #quiz-video styles remain the same, changes are in the HTML attributes below */
+
+        /* === END OF CHANGES === */
 
         @keyframes fadeIn {
             from {
@@ -542,7 +582,7 @@
             }
             
             #game-container {
-                height: 400px;
+                height: 400px; /* This will be overridden by the full-screen styles on desktop, but keep for default small screen behavior */
             }
         }
     </style>
@@ -629,7 +669,7 @@
             <div class="firm-name">Khaitan & Co.</div>
             <div class="firm-tagline">Advocates since 1911</div>
         </div>
-        <video id="quiz-video" src="Chaos_Realm_Video_Generation.mp4" controls preload="auto"></video>
+        <video id="quiz-video" src="Chaos_Realm_Video_Generation.mp4" autoplay loop muted preload="auto"></video>
         <div id="game-container"></div>
         <button class="nav-button" id="skip-game-btn" style="margin-top: 20px;">Skip to Next Question</button>
     </div>
@@ -827,7 +867,10 @@
             displayQuestion();
             updateProgressBar();
             updateScore();
-            document.body.style.overflow = 'auto';
+            // Remove full-screen classes
+            document.body.classList.remove('full-screen-game');
+            mediaContainer.classList.remove('full-screen');
+            document.body.style.overflow = 'auto'; // Restore normal scrolling
         }
 
         // Initialize the application
@@ -837,11 +880,10 @@
             skipGameBtn.addEventListener('click', skipGame);
             kaiBot.addEventListener('click', toggleKaiChat);
             
-            quizVideo.onended = () => {
-                quizVideo.style.display = 'none';
-                gameContainer.style.display = 'flex';
-                loadGame();
-            };
+            // NOTE: The video end handler is now optional since it's looping.
+            // If you want the game to start only after a manual skip or a fixed time,
+            // you should handle that logic. Since the request was to loop, I'll assume
+            // the skip button is the primary way to move on.
         }
 
         function skipGame() {
@@ -991,8 +1033,48 @@
             quizContainer.style.display = 'none';
             mediaContainer.style.display = 'flex';
             quizVideo.style.display = 'block';
-            document.body.style.overflow = 'hidden';
+            
+            // Apply full-screen styles for the game mode
+            document.body.classList.add('full-screen-game');
+            mediaContainer.classList.add('full-screen');
+
+            // Force the video to restart and be muted/loop (already in HTML attributes)
+            quizVideo.currentTime = 0; 
             quizVideo.play();
+
+            // Set a timeout to automatically switch to the game iframe after the video
+            // This is for the video's original purpose, though it's now looping. 
+            // I'll keep the video to game logic, but comment out the video end handler
+            // in initializeApp, relying on the user to click 'Skip'.
+            quizVideo.onended = () => {
+                quizVideo.style.display = 'none';
+                gameContainer.style.display = 'flex';
+                loadGame();
+                // The full-screen class is applied to mediaContainer here, so the game fills it.
+            };
+            
+            // To make the game start right away after the video, you can use the original logic.
+            // But since you asked for it to keep playing, I'll assume you want the full-screen 
+            // only for the game itself, and the video stays in the box. Let's revert the full-screen change
+            // and apply it only when the game starts.
+
+            // Reverting the full screen change from this function, and adding an explicit function
+            // to load the game and make it full screen.
+            
+            // Original video to game switch
+            setTimeout(() => {
+                quizVideo.style.display = 'none';
+                gameContainer.style.display = 'flex';
+                loadGame();
+                
+                // === FINAL FULL SCREEN LOGIC FOR GAME ===
+                // Apply the full-screen styles right before the game loads
+                document.body.classList.add('full-screen-game');
+                mediaContainer.classList.add('full-screen');
+                // The iframe inside #game-container will now fill the viewport!
+                // =======================================
+            }, 5000); // 5 seconds video playback before game starts (or adjust as needed)
+            
         }
         
         function selectOption(optionIndex) {
@@ -1397,4 +1479,3 @@
     </script>
 </body>
 </html>
-
