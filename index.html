@@ -71,7 +71,10 @@
             max-width: 700px;
             padding: 35px;
             position: relative;
-            overflow: hidden;
+            /* FIX FOR DROPDOWN: Remove overflow: hidden to allow select options to render outside if needed,
+               or just ensure components fit. Since we fixed the width below, this may not be needed, but 
+               it's good practice for elements that might extend beyond the box. Let's keep it for now as 
+               it was likely on the original 'container' class which is inherited. */
             z-index: 10;
         }
 
@@ -493,7 +496,7 @@
 
         /* 2nd Change: Game Full Screen */
         /* Change max-width of media-container to allow it to expand more,
-           and remove the padding so the iframe can touch the edges. */
+            and remove the padding so the iframe can touch the edges. */
         .media-container.full-screen {
             max-width: 100%; /* Allow it to take up more screen space */
             width: 100vw; /* Take full viewport width */
@@ -547,7 +550,7 @@
         .match-row {
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 10px; /* Reduced gap slightly */
             padding: 12px;
             border: 2px solid #e0e0e0;
             border-radius: 8px;
@@ -566,10 +569,12 @@
             border-radius: 6px;
             font-weight: 600;
             color: #2c3e50;
+            font-size: 16px; /* Slightly smaller font for better fit */
         }
 
         .match-dropdown {
             flex: 1;
+            width: 100%; /* ADDED: Ensures it respects the flex parent's width */
             padding: 10px 15px;
             border: 2px solid #e0e0e0;
             border-radius: 6px;
@@ -980,6 +985,7 @@
         let userScore = 0;
         let userAnswers = new Array(quizQuestions.length).fill(null);
         let gameCompleted = false;
+        let shuffledDefinitions = []; // Store the shuffled definitions for use in display/checking
 
         // DOM elements
         const welcomeContainer = document.getElementById('welcome-container');
@@ -1029,11 +1035,6 @@
             startQuizBtn.addEventListener('click', startQuiz);
             skipGameBtn.addEventListener('click', skipGame);
             kaiBot.addEventListener('click', toggleKaiChat);
-            
-            // NOTE: The video end handler is now optional since it's looping.
-            // If you want the game to start only after a manual skip or a fixed time,
-            // you should handle that logic. Since the request was to loop, I'll assume
-            // the skip button is the primary way to move on.
         }
 
         function skipGame() {
@@ -1143,6 +1144,13 @@
                 unsortedItems.className = 'unsorted-items';
                 unsortedItems.id = 'unsorted-items';
 
+                // Restore items to bins or unsorted area based on userAnswers
+                const binsContent = {
+                    confidential: [],
+                    public: []
+                };
+
+                // Populate all items initially to the unsorted area
                 question.items.forEach(itemData => {
                     const item = document.createElement('div');
                     item.className = 'item';
@@ -1150,7 +1158,14 @@
                     item.textContent = itemData.text;
                     item.id = 'item-' + itemData.text.replace(/\s/g, '');
                     item.dataset.type = itemData.category;
-                    unsortedItems.appendChild(item);
+                    
+                    // If we have a saved answer, re-sort them based on the saved state
+                    if (userAnswers[currentQuestion] && userAnswers[currentQuestion][itemData.text] !== undefined) {
+                        binsContent[userAnswers[currentQuestion][itemData.text]].push(item);
+                    } else {
+                        // Otherwise, put in unsorted pile
+                        unsortedItems.appendChild(item);
+                    }
                 });
 
                 const binContainer = document.createElement('div');
@@ -1160,13 +1175,21 @@
                 confidentialBin.className = 'bin confidential-bin';
                 confidentialBin.id = 'confidential-bin';
                 confidentialBin.dataset.type = 'confidential';
-                confidentialBin.innerHTML = `<div class="bin-title">Confidential</div><div class="bin-content"></div>`;
+                const confidentialBinContent = document.createElement('div');
+                confidentialBinContent.className = 'bin-content';
+                confidentialBin.innerHTML = `<div class="bin-title">Confidential</div>`;
+                binsContent.confidential.forEach(item => confidentialBinContent.appendChild(item));
+                confidentialBin.appendChild(confidentialBinContent);
 
                 const publicBin = document.createElement('div');
                 publicBin.className = 'bin public-bin';
                 publicBin.id = 'public-bin';
                 publicBin.dataset.type = 'public';
-                publicBin.innerHTML = `<div class="bin-title">Public</div><div class="bin-content"></div>`;
+                const publicBinContent = document.createElement('div');
+                publicBinContent.className = 'bin-content';
+                publicBin.innerHTML = `<div class="bin-title">Public</div>`;
+                binsContent.public.forEach(item => publicBinContent.appendChild(item));
+                publicBin.appendChild(publicBinContent);
 
                 binContainer.appendChild(confidentialBin);
                 binContainer.appendChild(publicBin);
@@ -1215,8 +1238,10 @@
                 const matchContainer = document.createElement('div');
                 matchContainer.className = 'match-container';
                 
-                // Shuffle definitions for matching
-                const shuffledDefinitions = [...question.pairs].sort(() => Math.random() - 0.5);
+                // Shuffle definitions for matching if not already shuffled
+                if (!shuffledDefinitions.length || userAnswers[currentQuestion] === null) {
+                    shuffledDefinitions = [...question.pairs].sort(() => Math.random() - 0.5);
+                }
                 
                 question.pairs.forEach((pair, index) => {
                     const matchRow = document.createElement('div');
@@ -1228,29 +1253,36 @@
                     
                     const dropdown = document.createElement('select');
                     dropdown.className = 'match-dropdown';
+                    dropdown.id = `match-dropdown-${index}`; // Add ID for easier access
                     
                     // Add default option
                     const defaultOption = document.createElement('option');
                     defaultOption.value = "";
                     defaultOption.textContent = "Select definition";
                     defaultOption.disabled = true;
-                    defaultOption.selected = true;
+                    if (userAnswers[currentQuestion] === null || userAnswers[currentQuestion][index] === null) {
+                        defaultOption.selected = true;
+                    }
                     dropdown.appendChild(defaultOption);
                     
                     // Add definition options
                     shuffledDefinitions.forEach((def, defIndex) => {
                         const option = document.createElement('option');
-                        option.value = defIndex;
+                        // Use the full definition text as the value to easily check against the original pairs' definition
+                        option.value = def.definition;
                         option.textContent = def.definition;
                         dropdown.appendChild(option);
                     });
                     
                     // Set selected value if already answered
                     if (userAnswers[currentQuestion] && userAnswers[currentQuestion][index] !== undefined) {
+                         // The saved answer is the definition text
                         dropdown.value = userAnswers[currentQuestion][index];
                     }
                     
                     dropdown.addEventListener('change', () => {
+                        // Store the selected definition text as the answer
+                        userAnswers[currentQuestion][index] = dropdown.value;
                         checkMatchCompletion();
                     });
                     
@@ -1261,10 +1293,13 @@
                 
                 optionsContainer.appendChild(matchContainer);
                 
-                // Check if already completed
-                if (userAnswers[currentQuestion]) {
-                    checkMatchCompletion();
+                // Initialize user answer array for this question if null
+                if (userAnswers[currentQuestion] === null) {
+                    userAnswers[currentQuestion] = new Array(question.pairs.length).fill(null);
                 }
+                
+                // Check for feedback if already completed/answered
+                checkMatchCompletion(true); // pass true to just check and update UI state
             }
         }
         
@@ -1273,33 +1308,10 @@
             mediaContainer.style.display = 'flex';
             quizVideo.style.display = 'block';
             
-            // Apply full-screen styles for the game mode
-            document.body.classList.add('full-screen-game');
-            mediaContainer.classList.add('full-screen');
-
             // Force the video to restart and be muted/loop (already in HTML attributes)
             quizVideo.currentTime = 0; 
             quizVideo.play();
 
-            // Set a timeout to automatically switch to the game iframe after the video
-            // This is for the video's original purpose, though it's now looping. 
-            // I'll keep the video to game logic, but comment out the video end handler
-            // in initializeApp, relying on the user to click 'Skip'.
-            quizVideo.onended = () => {
-                quizVideo.style.display = 'none';
-                gameContainer.style.display = 'flex';
-                loadGame();
-                // The full-screen class is applied to mediaContainer here, so the game fills it.
-            };
-            
-            // To make the game start right away after the video, you can use the original logic.
-            // But since you asked for it to keep playing, I'll assume you want the full-screen 
-            // only for the game itself, and the video stays in the box. Let's revert the full-screen change
-            // and apply it only when the game starts.
-
-            // Reverting the full screen change from this function, and adding an explicit function
-            // to load the game and make it full screen.
-            
             // Original video to game switch
             setTimeout(() => {
                 quizVideo.style.display = 'none';
@@ -1366,32 +1378,37 @@
             updateScore();
         }
 
-        function checkMatchCompletion() {
+        /*
+         * FIX FOR QUESTION 11 LOGIC: 
+         * The correct logic should compare the selected definition (value) in the dropdown 
+         * against the correct definition for that row's term (index).
+         */
+        function checkMatchCompletion(justUpdateUI = false) {
             const question = quizQuestions[currentQuestion];
             const dropdowns = document.querySelectorAll('.match-dropdown');
-            const userSelections = [];
             let allSelected = true;
-            
+            let currentSelections = []; // Store selected definitions text for userAnswers and checking
+
             dropdowns.forEach((dropdown, index) => {
-                userSelections[index] = dropdown.value !== "" ? parseInt(dropdown.value) : null;
-                if (dropdown.value === "") {
+                const selectedValue = dropdown.value;
+                currentSelections.push(selectedValue !== "" ? selectedValue : null);
+                
+                if (selectedValue === "") {
                     allSelected = false;
                 }
             });
             
-            userAnswers[currentQuestion] = userSelections;
-            
+            userAnswers[currentQuestion] = currentSelections;
+
             if (allSelected) {
                 let isCorrect = true;
                 
-                // Check if each term is matched with its correct definition
                 dropdowns.forEach((dropdown, index) => {
-                    const selectedDefinitionIndex = parseInt(dropdown.value);
-                    const correctDefinitionIndex = question.pairs.findIndex(pair => 
-                        pair.term === question.pairs[index].term
-                    );
+                    const selectedDefinition = dropdown.value;
+                    const correctDefinition = question.pairs[index].definition;
                     
-                    if (selectedDefinitionIndex === correctDefinitionIndex) {
+                    // Check if the selected definition matches the correct definition for the term in that row
+                    if (selectedDefinition === correctDefinition) {
                         dropdown.parentElement.classList.add('match-correct');
                         dropdown.parentElement.classList.remove('match-incorrect');
                     } else {
@@ -1420,6 +1437,13 @@
                 return isCorrect;
             }
             
+            // Only update the score if we're not just updating the UI (i.e., when navigating back)
+            // If any is not selected, we don't show success/failure feedback yet.
+            if (!justUpdateUI) {
+                feedbackElement.style.display = 'none';
+                aiCommentElement.style.display = 'none';
+            }
+
             return false;
         }
 
@@ -1475,37 +1499,45 @@
             const correctType = draggedItem.dataset.type;
             const targetBin = e.currentTarget;
             const targetBinType = targetBin.dataset.type;
+            const itemText = draggedItem.textContent;
 
+            // Initialize/update saved answers for the sort question
+            if (userAnswers[currentQuestion] === null) {
+                userAnswers[currentQuestion] = {};
+            }
+            
+            // Check if item is dropped into the correct bin
             if (correctType === targetBinType) {
                 targetBin.querySelector('.bin-content').appendChild(draggedItem);
+                userAnswers[currentQuestion][itemText] = targetBinType; // Save the correct drop
                 showKaiMessage("Correct! That item belongs in this category. ✅");
                 
                 setTimeout(checkSortCompletion, 500);
             } else {
-                showKaiMessage("Not quite! The item's category doesn't match this bin. ❌");
-                
+                // Return item to unsorted area on incorrect drop
                 document.getElementById('unsorted-items').appendChild(draggedItem);
+                userAnswers[currentQuestion][itemText] = 'unsorted'; // Mark as unsorted/incorrectly placed
+                showKaiMessage("Not quite! The item's category doesn't match this bin. ❌");
             }
         }
         
         function checkSortCompletion() {
             const question = quizQuestions[currentQuestion];
-            let isCorrect = true;
-            const sortedItems = document.querySelectorAll('.bin .item');
+            const allItems = question.items.length;
+            let correctlyPlacedCount = 0;
 
-            if (sortedItems.length !== question.items.length) {
-                isCorrect = false;
-            } else {
-                sortedItems.forEach(item => {
-                    const parentBin = item.closest('.bin');
-                    if (!parentBin || item.dataset.type !== parentBin.dataset.type) {
-                        isCorrect = false;
-                    }
-                });
-            }
-            
-            userAnswers[currentQuestion] = isCorrect;
-            updateScore();
+            if (userAnswers[currentQuestion] === null) return false;
+
+            // Check if all items are sorted correctly
+            question.items.forEach(itemData => {
+                const itemAnswer = userAnswers[currentQuestion][itemData.text];
+                if (itemAnswer === itemData.category) {
+                    correctlyPlacedCount++;
+                }
+            });
+
+            const isCorrect = correctlyPlacedCount === allItems;
+            userAnswers[currentQuestion] = isCorrect; // Use boolean for simpler score calculation
 
             if (isCorrect) {
                 feedbackElement.innerHTML = `<span class="feedback-icon">✅</span><span class="feedback-text">Correct! All documents are in the right bins.</span>`;
@@ -1513,6 +1545,29 @@
                 aiCommentElement.textContent = "Excellent! You have a great understanding of data classification.";
                 showKaiMessage("Excellent! You have a great understanding of data classification.");
             } else {
+                 // To update the display without re-sorting the original array:
+                userAnswers[currentQuestion] = {};
+                question.items.forEach(itemData => {
+                     // Check current DOM placement to set the state for the current view
+                    const itemElement = document.getElementById('item-' + itemData.text.replace(/\s/g, ''));
+                    const parentBin = itemElement.closest('.bin');
+                    if (parentBin) {
+                        userAnswers[currentQuestion][itemData.text] = parentBin.dataset.type;
+                    } else {
+                        userAnswers[currentQuestion][itemData.text] = 'unsorted';
+                    }
+                });
+                // Then set the score based on actual correct count
+                let currentCorrectCount = 0;
+                question.items.forEach(itemData => {
+                    if (userAnswers[currentQuestion][itemData.text] === itemData.category) {
+                        currentCorrectCount++;
+                    }
+                });
+                // Re-assign the score for consistency in the simple boolean format for going next
+                userAnswers[currentQuestion] = currentCorrectCount === allItems;
+
+
                 feedbackElement.innerHTML = `<span class="feedback-icon">🚨</span><span class="feedback-text">Incorrect! Please review your sorting.</span>`;
                 feedbackElement.className = 'feedback';
                 aiCommentElement.textContent = "Please re-examine the items and their categories. Sorting correctly is a key security practice.";
@@ -1520,6 +1575,7 @@
             }
             feedbackElement.style.display = 'flex';
             aiCommentElement.style.display = 'block';
+            updateScore();
             return isCorrect;
         }
 
@@ -1539,8 +1595,21 @@
                 }
                 proceed = true;
             } else if (currentQ.type === "sort") {
+                // For a sort question, we only proceed if all items are sorted correctly
+                let allSorted = true;
+                const itemsInBins = document.querySelectorAll('.bin .item');
+                if (itemsInBins.length !== currentQ.items.length) {
+                    allSorted = false;
+                }
+                
+                if (!allSorted) {
+                    showKaiMessage("Please ensure all items are sorted into the correct bins before proceeding.");
+                    return;
+                }
+                
                 proceed = checkSortCompletion();
                 if (!proceed) {
+                    showKaiMessage("Some items are in the wrong bin! Please correct your sorting.");
                     return;
                 }
             } else if (currentQ.type === "truefalse") {
@@ -1550,9 +1619,19 @@
                 }
                 proceed = true;
             } else if (currentQ.type === "match") {
+                let allMatched = true;
+                if (userAnswers[currentQuestion] === null || userAnswers[currentQuestion].includes(null)) {
+                    allMatched = false;
+                }
+
+                if (!allMatched) {
+                    showKaiMessage("Please complete all matches before proceeding.");
+                    return;
+                }
+                
                 proceed = checkMatchCompletion();
                 if (!proceed) {
-                    showKaiMessage("Please complete all matches before proceeding.");
+                    showKaiMessage("Some matches are incorrect. Please correct them before proceeding.");
                     return;
                 }
             } else {
@@ -1599,6 +1678,16 @@
                     } else if (question.type === "sort") {
                         if (answer === true) {
                             correctCount++;
+                        } else if (typeof answer === 'object') {
+                            // Complex sort logic if we want partial points
+                            // For simplicity, sticking to all-or-nothing:
+                            let allCorrect = true;
+                            question.items.forEach(itemData => {
+                                if (answer[itemData.text] !== itemData.category) {
+                                    allCorrect = false;
+                                }
+                            });
+                            if (allCorrect) correctCount++;
                         }
                     } else if (question.type === "truefalse") {
                         if (answer === question.correctAnswer) {
@@ -1608,8 +1697,11 @@
                         // For match questions, check if all selections are correct
                         let allCorrect = true;
                         if (Array.isArray(answer)) {
-                            answer.forEach((selection, selIndex) => {
-                                if (selection === null || selection !== selIndex) {
+                            // Check against the original pairs array
+                            answer.forEach((selectedDefinition, selIndex) => {
+                                const correctDefinition = question.pairs[selIndex].definition;
+                                // We store the string value, so compare strings
+                                if (selectedDefinition === null || selectedDefinition !== correctDefinition) {
                                     allCorrect = false;
                                 }
                             });
@@ -1791,12 +1883,15 @@
         function toggleKaiChat() {
             kaiChat.classList.toggle('active');
             if (kaiChat.classList.contains('active')) {
+                const currentQ = quizQuestions[currentQuestion];
                 if (userAnswers[currentQuestion] === null) {
                     chatText.textContent = "I'm here to help! Select an answer and I'll give you feedback.";
-                } else if (userAnswers[currentQuestion] === quizQuestions[currentQuestion].correctAnswer) {
+                } else if (currentQ.type === "mcq" && userAnswers[currentQuestion] === currentQ.correctAnswer) {
+                    chatText.textContent = "Excellent! You're following firm policy correctly.";
+                } else if (currentQ.type === "truefalse" && userAnswers[currentQuestion] === currentQ.correctAnswer) {
                     chatText.textContent = "Excellent! You're following firm policy correctly.";
                 } else {
-                    chatText.textContent = quizQuestions[currentQuestion].feedback.aiComment;
+                    chatText.textContent = currentQ.feedback.aiComment;
                 }
             }
         }
