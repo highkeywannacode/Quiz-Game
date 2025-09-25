@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Khaitan & Co. - Quiz with KAI Assistant</title>
     <style>
-        /* ... (Your existing CSS code remains unchanged) ... */
         * {
             margin: 0;
             padding: 0;
@@ -32,7 +31,7 @@
             max-width: 700px;
             padding: 35px;
             position: relative;
-            overflow: hidden;
+            /* Removed overflow: hidden from here to prevent dropdown clipping */
             z-index: 10;
             text-align: center;
         }
@@ -71,10 +70,6 @@
             max-width: 700px;
             padding: 35px;
             position: relative;
-            /* FIX FOR DROPDOWN: Remove overflow: hidden to allow select options to render outside if needed,
-               or just ensure components fit. Since we fixed the width below, this may not be needed, but 
-               it's good practice for elements that might extend beyond the box. Let's keep it for now as 
-               it was likely on the original 'container' class which is inherited. */
             z-index: 10;
         }
 
@@ -321,7 +316,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: 30px; /* Increased bottom margin for better spacing */
         }
 
         .unsorted-items {
@@ -334,6 +329,7 @@
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
+            align-content: flex-start; /* Items start from the top */
             gap: 10px;
             background-color: #f8f9fa;
         }
@@ -492,24 +488,18 @@
             margin-bottom: 20px;
         }
         
-        /* === START OF CHANGES === */
-
-        /* 2nd Change: Game Full Screen */
-        /* Change max-width of media-container to allow it to expand more,
-            and remove the padding so the iframe can touch the edges. */
+        /* === FULL SCREEN STYLES (for game) === */
         .media-container.full-screen {
-            max-width: 100%; /* Allow it to take up more screen space */
-            width: 100vw; /* Take full viewport width */
-            height: 100vh; /* Take full viewport height */
-            margin: 0; /* Remove margin/spacing from body's flex alignment */
-            padding: 0; /* Remove internal padding */
-            border-radius: 0; /* Optional: remove rounded corners for full screen look */
-            box-shadow: none; /* Optional: remove shadow */
+            max-width: 100%; 
+            width: 100vw; 
+            height: 100vh; 
+            margin: 0; 
+            padding: 0; 
+            border-radius: 0; 
+            box-shadow: none; 
         }
         
-        /* The body needs to be able to stretch the media container */
         body.full-screen-game {
-             /* Remove center alignment for a true full screen experience */
             justify-content: flex-start;
             align-items: flex-start;
             padding: 0;
@@ -517,29 +507,24 @@
 
         #game-container {
             width: 100%;
-            height: 100%; /* Change to 100% to fill parent */
-            border: none; /* Remove border for full-screen game */
-            border-radius: 0; /* Remove border radius */
+            height: 100%; 
+            border: none; 
+            border-radius: 0; 
             overflow: hidden;
             display: none;
         }
         
-        /* Ensure the iframe inside the container is also full size */
         #game-container iframe {
             width: 100%;
             height: 100%;
         }
 
-        /* Hide the header and skip button in full screen game mode */
         .media-container.full-screen .header,
         .media-container.full-screen #skip-game-btn {
             display: none;
         }
         
-        /* 1st Change: Video Looping without Controls */
-        /* #quiz-video styles remain the same, changes are in the HTML attributes below */
-
-        /* === NEW MATCH THE FOLLOWING STYLES === */
+        /* === MATCH THE FOLLOWING STYLES === */
         .match-container {
             display: flex;
             flex-direction: column;
@@ -550,7 +535,7 @@
         .match-row {
             display: flex;
             align-items: center;
-            gap: 10px; /* Reduced gap slightly */
+            gap: 10px; 
             padding: 12px;
             border: 2px solid #e0e0e0;
             border-radius: 8px;
@@ -569,12 +554,12 @@
             border-radius: 6px;
             font-weight: 600;
             color: #2c3e50;
-            font-size: 16px; /* Slightly smaller font for better fit */
+            font-size: 16px; 
         }
 
         .match-dropdown {
             flex: 1;
-            width: 100%; /* ADDED: Ensures it respects the flex parent's width */
+            width: 100%; /* FIX 2: Ensures dropdown respects container width */
             padding: 10px 15px;
             border: 2px solid #e0e0e0;
             border-radius: 6px;
@@ -599,7 +584,7 @@
             background-color: #ffebee;
         }
 
-        /* === NEW TRUE/FALSE QUESTION STYLES === */
+        /* === TRUE/FALSE QUESTION STYLES === */
         .true-false-container {
             display: flex;
             justify-content: center;
@@ -647,8 +632,6 @@
             background-color: #ffebee;
         }
 
-        /* === END OF CHANGES === */
-
         @keyframes fadeIn {
             from {
                 opacity: 0;
@@ -693,10 +676,9 @@
             }
             
             #game-container {
-                height: 400px; /* This will be overridden by the full-screen styles on desktop, but keep for default small screen behavior */
+                height: 400px;
             }
             
-            /* Responsive styles for new question types */
             .match-row {
                 flex-direction: column;
                 gap: 10px;
@@ -985,7 +967,7 @@
         let userScore = 0;
         let userAnswers = new Array(quizQuestions.length).fill(null);
         let gameCompleted = false;
-        let shuffledDefinitions = []; // Store the shuffled definitions for use in display/checking
+        let shuffledDefinitions = []; // Store the shuffled definitions for match question
 
         // DOM elements
         const welcomeContainer = document.getElementById('welcome-container');
@@ -1143,31 +1125,7 @@
                 const unsortedItems = document.createElement('div');
                 unsortedItems.className = 'unsorted-items';
                 unsortedItems.id = 'unsorted-items';
-
-                // Restore items to bins or unsorted area based on userAnswers
-                const binsContent = {
-                    confidential: [],
-                    public: []
-                };
-
-                // Populate all items initially to the unsorted area
-                question.items.forEach(itemData => {
-                    const item = document.createElement('div');
-                    item.className = 'item';
-                    item.draggable = true;
-                    item.textContent = itemData.text;
-                    item.id = 'item-' + itemData.text.replace(/\s/g, '');
-                    item.dataset.type = itemData.category;
-                    
-                    // If we have a saved answer, re-sort them based on the saved state
-                    if (userAnswers[currentQuestion] && userAnswers[currentQuestion][itemData.text] !== undefined) {
-                        binsContent[userAnswers[currentQuestion][itemData.text]].push(item);
-                    } else {
-                        // Otherwise, put in unsorted pile
-                        unsortedItems.appendChild(item);
-                    }
-                });
-
+                
                 const binContainer = document.createElement('div');
                 binContainer.className = 'bin-container';
 
@@ -1178,7 +1136,6 @@
                 const confidentialBinContent = document.createElement('div');
                 confidentialBinContent.className = 'bin-content';
                 confidentialBin.innerHTML = `<div class="bin-title">Confidential</div>`;
-                binsContent.confidential.forEach(item => confidentialBinContent.appendChild(item));
                 confidentialBin.appendChild(confidentialBinContent);
 
                 const publicBin = document.createElement('div');
@@ -1188,7 +1145,6 @@
                 const publicBinContent = document.createElement('div');
                 publicBinContent.className = 'bin-content';
                 publicBin.innerHTML = `<div class="bin-title">Public</div>`;
-                binsContent.public.forEach(item => publicBinContent.appendChild(item));
                 publicBin.appendChild(publicBinContent);
 
                 binContainer.appendChild(confidentialBin);
@@ -1198,6 +1154,28 @@
                 gameArea.appendChild(binContainer);
                 optionsContainer.appendChild(gameArea);
 
+                // Populate items, putting them back in bins if previously sorted
+                const savedAnswers = userAnswers[currentQuestion] || {};
+
+                question.items.forEach(itemData => {
+                    const item = document.createElement('div');
+                    item.className = 'item';
+                    item.draggable = true;
+                    item.textContent = itemData.text;
+                    item.id = 'item-' + itemData.text.replace(/\s/g, '');
+                    item.dataset.type = itemData.category;
+                    
+                    const savedCategory = savedAnswers[itemData.text];
+
+                    if (savedCategory === 'confidential') {
+                        confidentialBinContent.appendChild(item);
+                    } else if (savedCategory === 'public') {
+                        publicBinContent.appendChild(item);
+                    } else {
+                        unsortedItems.appendChild(item);
+                    }
+                });
+                
                 setupDragAndDrop();
             } else if (question.type === "truefalse") {
                 const trueFalseContainer = document.createElement('div');
@@ -1238,11 +1216,22 @@
                 const matchContainer = document.createElement('div');
                 matchContainer.className = 'match-container';
                 
-                // Shuffle definitions for matching if not already shuffled
-                if (!shuffledDefinitions.length || userAnswers[currentQuestion] === null) {
+                // Shuffle definitions for matching if no answers are saved, otherwise use saved shuffle
+                if (userAnswers[currentQuestion] === null) {
                     shuffledDefinitions = [...question.pairs].sort(() => Math.random() - 0.5);
+                    userAnswers[currentQuestion] = { selections: new Array(question.pairs.length).fill(null), shuffle: shuffledDefinitions.map(p => p.definition) };
+                } else if (userAnswers[currentQuestion] && userAnswers[currentQuestion].shuffle) {
+                    // Restore shuffle state
+                    const shuffle = userAnswers[currentQuestion].shuffle;
+                    shuffledDefinitions = shuffle.map(def => question.pairs.find(p => p.definition === def));
+                } else {
+                    // Fallback re-shuffle if saved data is inconsistent, but this shouldn't happen
+                    shuffledDefinitions = [...question.pairs].sort(() => Math.random() - 0.5);
+                    userAnswers[currentQuestion] = { selections: new Array(question.pairs.length).fill(null), shuffle: shuffledDefinitions.map(p => p.definition) };
                 }
-                
+
+                const currentSelections = userAnswers[currentQuestion].selections;
+
                 question.pairs.forEach((pair, index) => {
                     const matchRow = document.createElement('div');
                     matchRow.className = 'match-row';
@@ -1253,36 +1242,35 @@
                     
                     const dropdown = document.createElement('select');
                     dropdown.className = 'match-dropdown';
-                    dropdown.id = `match-dropdown-${index}`; // Add ID for easier access
+                    dropdown.id = `match-dropdown-${index}`; 
                     
                     // Add default option
                     const defaultOption = document.createElement('option');
                     defaultOption.value = "";
                     defaultOption.textContent = "Select definition";
                     defaultOption.disabled = true;
-                    if (userAnswers[currentQuestion] === null || userAnswers[currentQuestion][index] === null) {
+                    if (currentSelections[index] === null || currentSelections[index] === "") {
                         defaultOption.selected = true;
                     }
                     dropdown.appendChild(defaultOption);
                     
-                    // Add definition options
-                    shuffledDefinitions.forEach((def, defIndex) => {
+                    // Add definition options using the shuffled order
+                    shuffledDefinitions.forEach((def) => {
                         const option = document.createElement('option');
-                        // Use the full definition text as the value to easily check against the original pairs' definition
                         option.value = def.definition;
                         option.textContent = def.definition;
                         dropdown.appendChild(option);
                     });
                     
                     // Set selected value if already answered
-                    if (userAnswers[currentQuestion] && userAnswers[currentQuestion][index] !== undefined) {
-                         // The saved answer is the definition text
-                        dropdown.value = userAnswers[currentQuestion][index];
+                    if (currentSelections[index] !== null) {
+                        dropdown.value = currentSelections[index];
                     }
                     
-                    dropdown.addEventListener('change', () => {
+                    dropdown.addEventListener('change', (e) => {
                         // Store the selected definition text as the answer
-                        userAnswers[currentQuestion][index] = dropdown.value;
+                        currentSelections[index] = e.target.value;
+                        userAnswers[currentQuestion].selections = currentSelections; // Save to state
                         checkMatchCompletion();
                     });
                     
@@ -1293,13 +1281,7 @@
                 
                 optionsContainer.appendChild(matchContainer);
                 
-                // Initialize user answer array for this question if null
-                if (userAnswers[currentQuestion] === null) {
-                    userAnswers[currentQuestion] = new Array(question.pairs.length).fill(null);
-                }
-                
-                // Check for feedback if already completed/answered
-                checkMatchCompletion(true); // pass true to just check and update UI state
+                checkMatchCompletion(true); // Pass true to just check and update UI state
             }
         }
         
@@ -1318,13 +1300,10 @@
                 gameContainer.style.display = 'flex';
                 loadGame();
                 
-                // === FINAL FULL SCREEN LOGIC FOR GAME ===
                 // Apply the full-screen styles right before the game loads
                 document.body.classList.add('full-screen-game');
                 mediaContainer.classList.add('full-screen');
-                // The iframe inside #game-container will now fill the viewport!
-                // =======================================
-            }, 5000); // 5 seconds video playback before game starts (or adjust as needed)
+            }, 5000); // 5 seconds video playback before game starts
             
         }
         
@@ -1377,29 +1356,18 @@
             aiCommentElement.style.display = 'block';
             updateScore();
         }
-
-        /*
-         * FIX FOR QUESTION 11 LOGIC: 
-         * The correct logic should compare the selected definition (value) in the dropdown 
-         * against the correct definition for that row's term (index).
+        
+        /**
+         * Checks the completion and correctness for match questions.
+         * @param {boolean} justUpdateUI - If true, only updates the UI without forcing general feedback.
          */
         function checkMatchCompletion(justUpdateUI = false) {
             const question = quizQuestions[currentQuestion];
             const dropdowns = document.querySelectorAll('.match-dropdown');
-            let allSelected = true;
-            let currentSelections = []; // Store selected definitions text for userAnswers and checking
+            const currentSelections = userAnswers[currentQuestion].selections;
 
-            dropdowns.forEach((dropdown, index) => {
-                const selectedValue = dropdown.value;
-                currentSelections.push(selectedValue !== "" ? selectedValue : null);
-                
-                if (selectedValue === "") {
-                    allSelected = false;
-                }
-            });
+            let allSelected = !currentSelections.includes(null) && !currentSelections.includes("");
             
-            userAnswers[currentQuestion] = currentSelections;
-
             if (allSelected) {
                 let isCorrect = true;
                 
@@ -1407,7 +1375,6 @@
                     const selectedDefinition = dropdown.value;
                     const correctDefinition = question.pairs[index].definition;
                     
-                    // Check if the selected definition matches the correct definition for the term in that row
                     if (selectedDefinition === correctDefinition) {
                         dropdown.parentElement.classList.add('match-correct');
                         dropdown.parentElement.classList.remove('match-incorrect');
@@ -1418,27 +1385,28 @@
                     }
                 });
                 
-                if (isCorrect) {
-                    feedbackElement.innerHTML = `<span class="feedback-icon">✅</span><span class="feedback-text">Correct! All matches are accurate.</span>`;
-                    feedbackElement.className = 'feedback correct';
-                    aiCommentElement.textContent = "Excellent! You have a great understanding of data security terminology.";
-                    showKaiMessage("Excellent! You have a great understanding of data security terminology.");
-                } else {
-                    feedbackElement.innerHTML = `<span class="feedback-icon">🚨</span><span class="feedback-text">Some matches are incorrect. Please review.</span>`;
-                    feedbackElement.className = 'feedback';
-                    aiCommentElement.textContent = question.feedback.aiComment;
-                    showKaiMessage(question.feedback.aiComment);
+                if (!justUpdateUI) {
+                    if (isCorrect) {
+                        feedbackElement.innerHTML = `<span class="feedback-icon">✅</span><span class="feedback-text">Correct! All matches are accurate.</span>`;
+                        feedbackElement.className = 'feedback correct';
+                        aiCommentElement.textContent = "Excellent! You have a great understanding of data security terminology.";
+                        showKaiMessage("Excellent! You have a great understanding of data security terminology.");
+                    } else {
+                        feedbackElement.innerHTML = `<span class="feedback-icon">🚨</span><span class="feedback-text">Some matches are incorrect. Please review.</span>`;
+                        feedbackElement.className = 'feedback';
+                        aiCommentElement.textContent = question.feedback.aiComment;
+                        showKaiMessage(question.feedback.aiComment);
+                    }
+                    
+                    feedbackElement.style.display = 'flex';
+                    aiCommentElement.style.display = 'block';
                 }
-                
-                feedbackElement.style.display = 'flex';
-                aiCommentElement.style.display = 'block';
                 updateScore();
                 
                 return isCorrect;
             }
             
-            // Only update the score if we're not just updating the UI (i.e., when navigating back)
-            // If any is not selected, we don't show success/failure feedback yet.
+            // Clear feedback if not all items are selected
             if (!justUpdateUI) {
                 feedbackElement.style.display = 'none';
                 aiCommentElement.style.display = 'none';
@@ -1449,7 +1417,7 @@
 
         function setupDragAndDrop() {
             const items = document.querySelectorAll('.item');
-            const bins = document.querySelectorAll('.bin');
+            const bins = document.querySelectorAll('.bin, #unsorted-items'); // Add unsorted area as a drop target
             
             items.forEach(item => {
                 item.addEventListener('dragstart', dragStart);
@@ -1480,14 +1448,21 @@
             e.preventDefault();
             e.dataTransfer.dropEffect = 'move';
         }
-
+        
         function dragEnter(e) {
             e.preventDefault();
-            e.currentTarget.classList.add('drag-over');
+            // Check if the current target is an actual drop target (bin or unsorted area)
+            if (e.currentTarget.classList.contains('bin') || e.currentTarget.id === 'unsorted-items') {
+                e.currentTarget.classList.add('drag-over');
+            }
         }
 
         function dragLeave(e) {
-            e.currentTarget.classList.remove('drag-over');
+            // Only remove drag-over if the mouse is moving completely out of the drop zone, 
+            // not just moving over a child element.
+            if (!e.currentTarget.contains(e.relatedTarget)) {
+                e.currentTarget.classList.remove('drag-over');
+            }
         }
 
         function dropItem(e) {
@@ -1497,85 +1472,95 @@
             const itemId = e.dataTransfer.getData('text/plain');
             const draggedItem = document.getElementById(itemId);
             const correctType = draggedItem.dataset.type;
-            const targetBin = e.currentTarget;
-            const targetBinType = targetBin.dataset.type;
+            const targetElement = e.currentTarget;
             const itemText = draggedItem.textContent;
 
-            // Initialize/update saved answers for the sort question
-            if (userAnswers[currentQuestion] === null) {
+            // Initialize userAnswers object if needed
+            if (userAnswers[currentQuestion] === null || typeof userAnswers[currentQuestion] !== 'object' || Array.isArray(userAnswers[currentQuestion])) {
                 userAnswers[currentQuestion] = {};
             }
-            
-            // Check if item is dropped into the correct bin
-            if (correctType === targetBinType) {
-                targetBin.querySelector('.bin-content').appendChild(draggedItem);
-                userAnswers[currentQuestion][itemText] = targetBinType; // Save the correct drop
-                showKaiMessage("Correct! That item belongs in this category. ✅");
-                
-                setTimeout(checkSortCompletion, 500);
-            } else {
-                // Return item to unsorted area on incorrect drop
-                document.getElementById('unsorted-items').appendChild(draggedItem);
-                userAnswers[currentQuestion][itemText] = 'unsorted'; // Mark as unsorted/incorrectly placed
-                showKaiMessage("Not quite! The item's category doesn't match this bin. ❌");
+
+            // Check if dropping into a bin
+            if (targetElement.classList.contains('bin')) {
+                const targetBinType = targetElement.dataset.type;
+                targetElement.querySelector('.bin-content').appendChild(draggedItem);
+                userAnswers[currentQuestion][itemText] = targetBinType;
+
+                if (correctType === targetBinType) {
+                    showKaiMessage("Correct! That item belongs in this category. ✅");
+                } else {
+                    showKaiMessage("Incorrect bin! Please review its classification. ❌");
+                }
+            } 
+            // Check if dropping back into the unsorted area
+            else if (targetElement.id === 'unsorted-items') {
+                targetElement.appendChild(draggedItem);
+                userAnswers[currentQuestion][itemText] = 'unsorted'; // Mark as explicitly unsorted
+                showKaiMessage("Item returned to unsorted area. You must place all items into the bins to proceed.");
             }
+
+            setTimeout(checkSortCompletion, 500);
         }
         
+        /**
+         * Checks the completion and correctness for sort questions.
+         */
         function checkSortCompletion() {
             const question = quizQuestions[currentQuestion];
             const allItems = question.items.length;
             let correctlyPlacedCount = 0;
+            let allItemsPlacedInBins = true;
 
-            if (userAnswers[currentQuestion] === null) return false;
+            const currentAnswers = userAnswers[currentQuestion];
 
-            // Check if all items are sorted correctly
+            if (currentAnswers === null || typeof currentAnswers !== 'object') {
+                return false;
+            }
+
             question.items.forEach(itemData => {
-                const itemAnswer = userAnswers[currentQuestion][itemData.text];
+                const itemAnswer = currentAnswers[itemData.text];
+                
+                // If any item is missing an answer or marked 'unsorted', it hasn't been placed in a bin
+                if (!itemAnswer || itemAnswer === 'unsorted') {
+                    allItemsPlacedInBins = false;
+                }
+                
+                // Check correctness
                 if (itemAnswer === itemData.category) {
                     correctlyPlacedCount++;
                 }
             });
 
             const isCorrect = correctlyPlacedCount === allItems;
-            userAnswers[currentQuestion] = isCorrect; // Use boolean for simpler score calculation
-
+            
+            // If all items are placed in bins, we can finalize the answer
+            if (allItemsPlacedInBins) {
+                userAnswers[currentQuestion] = isCorrect; 
+            } else {
+                 // Otherwise, we keep the detailed object of current placements
+                // No change to userAnswers[currentQuestion] object state, just checking the overall status
+                // To prevent premature 'answered' state in updateScore:
+                updateScore(); 
+                return false; 
+            }
+            
+            // Only show final feedback and return true if ALL items are correctly sorted.
             if (isCorrect) {
                 feedbackElement.innerHTML = `<span class="feedback-icon">✅</span><span class="feedback-text">Correct! All documents are in the right bins.</span>`;
                 feedbackElement.className = 'feedback correct';
                 aiCommentElement.textContent = "Excellent! You have a great understanding of data classification.";
                 showKaiMessage("Excellent! You have a great understanding of data classification.");
             } else {
-                 // To update the display without re-sorting the original array:
-                userAnswers[currentQuestion] = {};
-                question.items.forEach(itemData => {
-                     // Check current DOM placement to set the state for the current view
-                    const itemElement = document.getElementById('item-' + itemData.text.replace(/\s/g, ''));
-                    const parentBin = itemElement.closest('.bin');
-                    if (parentBin) {
-                        userAnswers[currentQuestion][itemData.text] = parentBin.dataset.type;
-                    } else {
-                        userAnswers[currentQuestion][itemData.text] = 'unsorted';
-                    }
-                });
-                // Then set the score based on actual correct count
-                let currentCorrectCount = 0;
-                question.items.forEach(itemData => {
-                    if (userAnswers[currentQuestion][itemData.text] === itemData.category) {
-                        currentCorrectCount++;
-                    }
-                });
-                // Re-assign the score for consistency in the simple boolean format for going next
-                userAnswers[currentQuestion] = currentCorrectCount === allItems;
-
-
                 feedbackElement.innerHTML = `<span class="feedback-icon">🚨</span><span class="feedback-text">Incorrect! Please review your sorting.</span>`;
                 feedbackElement.className = 'feedback';
                 aiCommentElement.textContent = "Please re-examine the items and their categories. Sorting correctly is a key security practice.";
                 showKaiMessage("Please re-examine the items and their categories. Sorting correctly is a key security practice.");
             }
+            
             feedbackElement.style.display = 'flex';
             aiCommentElement.style.display = 'block';
             updateScore();
+            
             return isCorrect;
         }
 
@@ -1595,23 +1580,19 @@
                 }
                 proceed = true;
             } else if (currentQ.type === "sort") {
-                // For a sort question, we only proceed if all items are sorted correctly
-                let allSorted = true;
-                const itemsInBins = document.querySelectorAll('.bin .item');
-                if (itemsInBins.length !== currentQ.items.length) {
-                    allSorted = false;
-                }
-                
-                if (!allSorted) {
-                    showKaiMessage("Please ensure all items are sorted into the correct bins before proceeding.");
+                // Check if the sort is complete and correct
+                const isCorrectlySorted = checkSortCompletion();
+
+                if (userAnswers[currentQuestion] === null || typeof userAnswers[currentQuestion] !== 'boolean') {
+                    showKaiMessage("Please ensure all items are sorted into the bins before proceeding.");
                     return;
                 }
                 
-                proceed = checkSortCompletion();
-                if (!proceed) {
+                if (!isCorrectlySorted) {
                     showKaiMessage("Some items are in the wrong bin! Please correct your sorting.");
                     return;
                 }
+                proceed = true;
             } else if (currentQ.type === "truefalse") {
                 if (userAnswers[currentQuestion] === null) {
                     showKaiMessage("Please select True or False before proceeding.");
@@ -1619,10 +1600,7 @@
                 }
                 proceed = true;
             } else if (currentQ.type === "match") {
-                let allMatched = true;
-                if (userAnswers[currentQuestion] === null || userAnswers[currentQuestion].includes(null)) {
-                    allMatched = false;
-                }
+                let allMatched = userAnswers[currentQuestion] && userAnswers[currentQuestion].selections && !userAnswers[currentQuestion].selections.includes(null) && !userAnswers[currentQuestion].selections.includes("");
 
                 if (!allMatched) {
                     showKaiMessage("Please complete all matches before proceeding.");
@@ -1666,28 +1644,23 @@
             let answeredCount = 0;
             let correctCount = 0;
 
-            userAnswers.forEach((answer, index) => {
+            quizQuestions.forEach((question, index) => {
+                const answer = userAnswers[index];
+                
                 if (answer !== null) {
                     answeredCount++;
-                    const question = quizQuestions[index];
                     
                     if (question.type === "mcq") {
                         if (answer === question.correctAnswer) {
                             correctCount++;
                         }
                     } else if (question.type === "sort") {
-                        if (answer === true) {
+                        // Sort question score only counts if the answer is boolean (meaning fully placed)
+                        if (typeof answer === 'boolean' && answer === true) {
                             correctCount++;
                         } else if (typeof answer === 'object') {
-                            // Complex sort logic if we want partial points
-                            // For simplicity, sticking to all-or-nothing:
-                            let allCorrect = true;
-                            question.items.forEach(itemData => {
-                                if (answer[itemData.text] !== itemData.category) {
-                                    allCorrect = false;
-                                }
-                            });
-                            if (allCorrect) correctCount++;
+                            // If it's still an object, it's considered partially answered but not for full score
+                            answeredCount--; 
                         }
                     } else if (question.type === "truefalse") {
                         if (answer === question.correctAnswer) {
@@ -1695,17 +1668,25 @@
                         }
                     } else if (question.type === "match") {
                         // For match questions, check if all selections are correct
+                        const selections = answer.selections;
                         let allCorrect = true;
-                        if (Array.isArray(answer)) {
-                            // Check against the original pairs array
-                            answer.forEach((selectedDefinition, selIndex) => {
-                                const correctDefinition = question.pairs[selIndex].definition;
-                                // We store the string value, so compare strings
-                                if (selectedDefinition === null || selectedDefinition !== correctDefinition) {
-                                    allCorrect = false;
-                                }
-                            });
+                        
+                        if (Array.isArray(selections)) {
+                            // Check if all are selected and correct
+                            if (selections.includes(null) || selections.includes("")) {
+                                allCorrect = false;
+                                answeredCount--; // Don't count as answered if incomplete
+                            } else {
+                                selections.forEach((selectedDefinition, selIndex) => {
+                                    const correctDefinition = question.pairs[selIndex].definition;
+                                    if (selectedDefinition !== correctDefinition) {
+                                        allCorrect = false;
+                                    }
+                                });
+                            }
                             if (allCorrect) correctCount++;
+                        } else {
+                            answeredCount--; // Not a valid answer format
                         }
                     }
                 }
