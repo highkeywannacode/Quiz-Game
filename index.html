@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Khaitan & Co. - Quiz with KAI Assistant</title>
     <style>
-        /* ... (Your existing CSS code remains unchanged) ... */
         * {
             margin: 0;
             padding: 0;
@@ -21,6 +20,14 @@
             min-height: 100vh;
             padding: 20px;
             overflow-x: hidden;
+        }
+        
+        /* Body class for full-screen game mode */
+        body.full-screen-game {
+            justify-content: flex-start;
+            align-items: flex-start;
+            padding: 0;
+            overflow: hidden; /* Prevent scrolling in game mode */
         }
 
         /* General Container Styles */
@@ -313,7 +320,7 @@
             background-color: #f8f9fa;
         }
 
-        /* Drag & Drop Quiz Styles */
+        /* Drag & Drop Quiz Styles (for sorting) */
         .game-area {
             display: flex;
             flex-direction: column;
@@ -402,13 +409,76 @@
             border-width: 3px;
         }
 
-        .completion-message {
-            margin-top: 15px;
+        /* Styles for the new Match the Following game */
+        .match-container {
+            display: flex;
+            justify-content: space-around;
+            gap: 20px;
+            margin: 30px 0;
+            min-height: 250px;
+        }
+
+        .match-column {
+            width: 48%;
+            list-style: none;
             padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .match-term, .match-definition {
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            cursor: grab;
+            transition: all 0.2s ease;
+            font-size: 16px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .match-term {
+            background-color: #3498db;
+            color: white;
+            border: 1px solid #2c3e50;
+            cursor: pointer;
+        }
+
+        .match-definition {
+            background-color: white;
+            color: #2c3e50;
+            border: 1px solid #3498db;
+        }
+
+        .match-definition.highlight {
+            background-color: #e8f4fc;
+            border-color: #2ecc71;
+            box-shadow: 0 0 10px rgba(46, 204, 113, 0.5);
+        }
+
+        .match-term.dragging {
+            opacity: 0.5;
+            transform: scale(1.05);
+        }
+
+        .matched-pair {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 6px;
             background-color: #d4edda;
+            border: 1px solid #28a745;
+            font-weight: 600;
+        }
+
+        .matched-pair .term-text, .matched-pair .def-text {
+            flex: 1;
+            text-align: center;
+            padding: 5px;
             color: #155724;
-            border-radius: 5px;
-            font-weight: bold;
         }
         
         /* Login Form Styles */
@@ -482,6 +552,22 @@
             position: relative;
             overflow: hidden;
         }
+
+        /* Full Screen Game Styles */
+        .media-container.full-screen {
+            max-width: 100%;
+            width: 100vw;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            border-radius: 0;
+            box-shadow: none;
+        }
+        
+        .media-container.full-screen .header,
+        .media-container.full-screen #skip-game-btn {
+            display: none;
+        }
         
         #quiz-video {
             width: 100%;
@@ -489,54 +575,19 @@
             margin-bottom: 20px;
         }
         
-        /* === START OF CHANGES === */
-
-        /* 2nd Change: Game Full Screen */
-        /* Change max-width of media-container to allow it to expand more,
-           and remove the padding so the iframe can touch the edges. */
-        .media-container.full-screen {
-            max-width: 100%; /* Allow it to take up more screen space */
-            width: 100vw; /* Take full viewport width */
-            height: 100vh; /* Take full viewport height */
-            margin: 0; /* Remove margin/spacing from body's flex alignment */
-            padding: 0; /* Remove internal padding */
-            border-radius: 0; /* Optional: remove rounded corners for full screen look */
-            box-shadow: none; /* Optional: remove shadow */
-        }
-        
-        /* The body needs to be able to stretch the media container */
-        body.full-screen-game {
-             /* Remove center alignment for a true full screen experience */
-            justify-content: flex-start;
-            align-items: flex-start;
-            padding: 0;
-        }
-
         #game-container {
             width: 100%;
-            height: 100%; /* Change to 100% to fill parent */
-            border: none; /* Remove border for full-screen game */
-            border-radius: 0; /* Remove border radius */
+            height: 100%; /* Fill the parent */
+            border: none;
+            border-radius: 0;
             overflow: hidden;
             display: none;
         }
-        
-        /* Ensure the iframe inside the container is also full size */
+
         #game-container iframe {
             width: 100%;
             height: 100%;
         }
-
-        /* Hide the header and skip button in full screen game mode */
-        .media-container.full-screen .header,
-        .media-container.full-screen #skip-game-btn {
-            display: none;
-        }
-        
-        /* 1st Change: Video Looping without Controls */
-        /* #quiz-video styles remain the same, changes are in the HTML attributes below */
-
-        /* === END OF CHANGES === */
 
         @keyframes fadeIn {
             from {
@@ -582,7 +633,7 @@
             }
             
             #game-container {
-                height: 400px; /* This will be overridden by the full-screen styles on desktop, but keep for default small screen behavior */
+                height: 400px;
             }
         }
     </style>
@@ -644,7 +695,7 @@
             <div class="progress-bar" id="progress-bar" style="width: 0%"></div>
         </div>
 
-        <div class="question-number" id="question-number">QUESTION 1 OF 5</div>
+        <div class="question-number" id="question-number">QUESTION 1 OF 10</div>
 
         <div class="question-text" id="question-text"></div>
 
@@ -746,6 +797,34 @@
                 text: "Press Release",
                 category: "public"
             }]
+        }, {
+            // This is the Game Question (Question 5)
+            type: "mcq", // Type is still MCQ/placeholder, but logic routes to game
+            question: "You have completed the first half. Enter the 'Chaos Realm' to prove your defensive skills!",
+            options: ["Begin Game Simulation"],
+            correctAnswer: 0,
+            feedback: {
+                incorrect: "Please complete the game simulation before proceeding.",
+                aiComment: "Your mission awaits! Let's see your real-time security response."
+            }
+        }, {
+            // NEW MATCH QUESTION (Question 6)
+            type: "match",
+            question: "Match the Security Term with its best Definition.",
+            pairs: [{
+                term: "Phishing",
+                definition: "Fraudulent attempt to obtain sensitive info by disguising as a trustworthy entity."
+            }, {
+                term: "Encryption",
+                definition: "Converting data into code to prevent unauthorized access."
+            }, {
+                term: "Multi-Factor Auth (MFA)",
+                definition: "Requiring two or more verification factors to gain access."
+            }, {
+                term: "Clean Desk Policy",
+                definition: "Ensuring sensitive physical documents are secured at the end of the day."
+            }],
+            userMatches: [] // To store [termId, defId]
         }, {
             type: "mcq",
             question: "What is the primary purpose of data encryption?",
@@ -862,7 +941,7 @@
             gameCompleted = true;
             mediaContainer.style.display = 'none';
             quizContainer.style.display = 'block';
-            userAnswers[4] = true; 
+            userAnswers[4] = true; // Mark the game/question 5 as answered (and correct)
             currentQuestion = 5;
             displayQuestion();
             updateProgressBar();
@@ -879,11 +958,6 @@
             startQuizBtn.addEventListener('click', startQuiz);
             skipGameBtn.addEventListener('click', skipGame);
             kaiBot.addEventListener('click', toggleKaiChat);
-            
-            // NOTE: The video end handler is now optional since it's looping.
-            // If you want the game to start only after a manual skip or a fixed time,
-            // you should handle that logic. Since the request was to loop, I'll assume
-            // the skip button is the primary way to move on.
         }
 
         function skipGame() {
@@ -957,7 +1031,8 @@
                 showGameQuestion();
                 return;
             }
-
+            
+            // Handle MCQ Type
             if (question.type === "mcq") {
                 question.options.forEach((option, index) => {
                     const optionElement = document.createElement('div');
@@ -985,7 +1060,9 @@
                         optionElement.style.backgroundColor = '#e8f4fc';
                     }
                 });
-            } else if (question.type === "sort") {
+            } 
+            // Handle Sort Type
+            else if (question.type === "sort") {
                 const gameArea = document.createElement('div');
                 gameArea.className = 'game-area';
                 
@@ -1026,6 +1103,63 @@
                 optionsContainer.appendChild(gameArea);
 
                 setupDragAndDrop();
+            } 
+            // Handle Match Type
+            else if (question.type === "match") {
+                const matchContainer = document.createElement('div');
+                matchContainer.className = 'match-container';
+                
+                const termsColumn = document.createElement('div');
+                termsColumn.className = 'match-column';
+                termsColumn.id = 'terms-column';
+                termsColumn.innerHTML = `<div class="bin-title" style="color:#3498db; margin-bottom:15px;">Security Terms</div>`;
+
+                const definitionsColumn = document.createElement('div');
+                definitionsColumn.className = 'match-column';
+                definitionsColumn.id = 'definitions-column';
+                definitionsColumn.innerHTML = `<div class="bin-title" style="color:#2c3e50; margin-bottom:15px;">Definitions</div>`;
+                
+                const matchedContainer = document.createElement('div');
+                matchedContainer.id = 'matched-pairs-container';
+                matchedContainer.style.width = '100%';
+
+                // Shuffle and display terms/definitions
+                const terms = question.pairs.map((p, i) => ({ text: p.term, id: `term-${i}`, correctDefId: `def-${i}` }));
+                const definitions = question.pairs.map((p, i) => ({ text: p.definition, id: `def-${i}` }));
+                definitions.sort(() => Math.random() - 0.5); // Shuffle definitions
+
+                terms.forEach(termData => {
+                    const term = document.createElement('div');
+                    term.className = 'match-term';
+                    term.draggable = true;
+                    term.textContent = termData.text;
+                    term.id = termData.id;
+                    term.dataset.correct = termData.correctDefId;
+                    termsColumn.appendChild(term);
+                });
+
+                definitions.forEach(defData => {
+                    const definition = document.createElement('div');
+                    definition.className = 'match-definition';
+                    definition.textContent = defData.text;
+                    definition.id = defData.id;
+                    definitionsColumn.appendChild(definition);
+                });
+                
+                matchContainer.appendChild(termsColumn);
+                matchContainer.appendChild(definitionsColumn);
+                
+                optionsContainer.appendChild(matchContainer);
+                optionsContainer.appendChild(matchedContainer);
+
+                // If previous matches exist, re-render them
+                if (Array.isArray(userAnswers[currentQuestion]) && userAnswers[currentQuestion].length > 0) {
+                     // Since we don't store the actual answer array for match, let's keep it simple for now
+                     // and rely on the full re-render on load for this specific interaction type.
+                     // A full implementation would re-inject the matched elements here.
+                }
+
+                setupMatchTheFollowing(); 
             }
         }
         
@@ -1033,47 +1167,22 @@
             quizContainer.style.display = 'none';
             mediaContainer.style.display = 'flex';
             quizVideo.style.display = 'block';
-            
-            // Apply full-screen styles for the game mode
-            document.body.classList.add('full-screen-game');
-            mediaContainer.classList.add('full-screen');
+            gameContainer.style.display = 'none'; // Hide game initially
 
-            // Force the video to restart and be muted/loop (already in HTML attributes)
+            // Video loop and autoplay logic is handled by HTML attributes (autoplay loop muted)
             quizVideo.currentTime = 0; 
             quizVideo.play();
 
-            // Set a timeout to automatically switch to the game iframe after the video
-            // This is for the video's original purpose, though it's now looping. 
-            // I'll keep the video to game logic, but comment out the video end handler
-            // in initializeApp, relying on the user to click 'Skip'.
-            quizVideo.onended = () => {
-                quizVideo.style.display = 'none';
-                gameContainer.style.display = 'flex';
-                loadGame();
-                // The full-screen class is applied to mediaContainer here, so the game fills it.
-            };
-            
-            // To make the game start right away after the video, you can use the original logic.
-            // But since you asked for it to keep playing, I'll assume you want the full-screen 
-            // only for the game itself, and the video stays in the box. Let's revert the full-screen change
-            // and apply it only when the game starts.
-
-            // Reverting the full screen change from this function, and adding an explicit function
-            // to load the game and make it full screen.
-            
-            // Original video to game switch
+            // Set a timeout to switch to the game iframe after the video finishes (or a few seconds)
             setTimeout(() => {
                 quizVideo.style.display = 'none';
                 gameContainer.style.display = 'flex';
                 loadGame();
                 
-                // === FINAL FULL SCREEN LOGIC FOR GAME ===
-                // Apply the full-screen styles right before the game loads
+                // CHANGE 2: Apply the full-screen styles right before the game loads
                 document.body.classList.add('full-screen-game');
                 mediaContainer.classList.add('full-screen');
-                // The iframe inside #game-container will now fill the viewport!
-                // =======================================
-            }, 5000); // 5 seconds video playback before game starts (or adjust as needed)
+            }, 5000); // 5 seconds video playback before game starts
             
         }
         
@@ -1106,6 +1215,7 @@
             updateScore();
         }
 
+        /* --- Drag and Drop (Sorting) Logic --- */
         function setupDragAndDrop() {
             const items = document.querySelectorAll('.item');
             const bins = document.querySelectorAll('.bin');
@@ -1206,7 +1316,125 @@
             return isCorrect;
         }
 
+
+        /* --- Match The Following Logic --- */
+        function setupMatchTheFollowing() {
+            const terms = document.querySelectorAll('.match-term');
+            const definitions = document.querySelectorAll('.match-definition');
+
+            terms.forEach(term => {
+                term.addEventListener('dragstart', dragMatchStart);
+            });
+
+            definitions.forEach(def => {
+                def.addEventListener('dragover', dragMatchOver);
+                def.addEventListener('drop', dropMatchItem);
+                def.addEventListener('dragenter', dragMatchEnter);
+                def.addEventListener('dragleave', dragMatchLeave);
+            });
+        }
+
+        function dragMatchStart(e) {
+            e.dataTransfer.setData('termId', e.target.id);
+            e.dataTransfer.setData('termText', e.target.textContent);
+            e.dataTransfer.setData('correctDefId', e.target.dataset.correct);
+            e.target.classList.add('dragging');
+        }
+
+        function dragMatchEnter(e) {
+            e.preventDefault();
+            if (e.target.classList.contains('match-definition')) {
+                e.target.classList.add('highlight');
+            }
+        }
+
+        function dragMatchLeave(e) {
+            if (e.target.classList.contains('match-definition')) {
+                e.target.classList.remove('highlight');
+            }
+        }
+
+        function dragMatchOver(e) {
+            e.preventDefault();
+        }
+
+        function dropMatchItem(e) {
+            e.preventDefault();
+            const termId = e.dataTransfer.getData('termId');
+            const termText = e.dataTransfer.getData('termText');
+            const correctDefId = e.dataTransfer.getData('correctDefId');
+            const droppedTerm = document.getElementById(termId);
+            const targetDef = e.target.closest('.match-definition');
+            
+            targetDef.classList.remove('highlight');
+
+            if (!targetDef || targetDef.parentElement.id !== 'definitions-column') {
+                if(droppedTerm) droppedTerm.classList.remove('dragging');
+                return; 
+            }
+            
+            // Check for correctness
+            const isCorrect = correctDefId === targetDef.id;
+
+            if (isCorrect) {
+                showKaiMessage("Perfect match! Data integrity preserved. ✅");
+                
+                // Remove from the columns
+                droppedTerm.remove();
+                targetDef.remove();
+                
+                // Create the permanent matched pair display
+                const pair = document.createElement('div');
+                pair.className = 'matched-pair';
+                pair.innerHTML = `<span class="term-text">${termText}</span> - <span class="def-text">${targetDef.textContent}</span>`;
+                document.getElementById('matched-pairs-container').appendChild(pair);
+                
+                // Update the user's answer array
+                let userMatches = userAnswers[currentQuestion];
+                if (!Array.isArray(userMatches)) {
+                    userMatches = [];
+                }
+                userMatches.push([termId, targetDef.id]);
+                userAnswers[currentQuestion] = userMatches;
+
+                checkMatchCompletion();
+                
+            } else {
+                showKaiMessage("Incorrect match! Review the definition of the term. ❌");
+            }
+            
+            // Cleanup dragging class after drop attempt
+            if (droppedTerm) {
+                droppedTerm.classList.remove('dragging');
+            }
+        }
+
+        function checkMatchCompletion() {
+            const question = quizQuestions[currentQuestion];
+            const pairsToMatch = question.pairs.length;
+            const currentMatches = (userAnswers[currentQuestion] || []).length;
+            let isCorrect = currentMatches === pairsToMatch;
+
+            if (isCorrect) {
+                feedbackElement.innerHTML = `<span class="feedback-icon">✅</span><span class="feedback-text">Correct! All pairs matched perfectly.</span>`;
+                feedbackElement.className = 'feedback correct';
+                aiCommentElement.textContent = "Your matching skills are flawless! You clearly understand the core concepts.";
+                
+                feedbackElement.style.display = 'flex';
+                aiCommentElement.style.display = 'block';
+                
+                // Mark the question as fully correct for scoring
+                userAnswers[currentQuestion] = true; 
+                updateScore();
+                return true;
+            }
+            
+            return false;
+        }
+
+        /* --- Navigation Logic --- */
         function goToNextQuestion() {
+            // Special handling for the Game Question
             if (currentQuestion === 4 && !gameCompleted) {
                 showGameQuestion();
                 return;
@@ -1225,6 +1453,12 @@
                 proceed = checkSortCompletion();
                 if (!proceed) {
                     return;
+                }
+            } else if (currentQ.type === "match") {
+                proceed = checkMatchCompletion();
+                if (!proceed) {
+                     showKaiMessage("Please complete all matching pairs before proceeding.");
+                     return;
                 }
             } else {
                 proceed = true;
@@ -1265,10 +1499,14 @@
                         if (answer === quizQuestions[index].correctAnswer) {
                             correctCount++;
                         }
-                    } else if (quizQuestions[index].type === "sort") {
-                        if (answer === true) {
+                    } else if (quizQuestions[index].type === "sort" || quizQuestions[index].type === "match") {
+                        // For games/sorting, the answer is set to 'true' upon successful completion
+                        if (answer === true) { 
                             correctCount++;
                         }
+                    } else if (index === 4 && answer === true) {
+                        // Special case for the Game Question (index 4)
+                        correctCount++;
                     }
                 }
             });
@@ -1445,12 +1683,15 @@
         function toggleKaiChat() {
             kaiChat.classList.toggle('active');
             if (kaiChat.classList.contains('active')) {
+                const currentQ = quizQuestions[currentQuestion];
                 if (userAnswers[currentQuestion] === null) {
-                    chatText.textContent = "I'm here to help! Select an answer and I'll give you feedback.";
-                } else if (userAnswers[currentQuestion] === quizQuestions[currentQuestion].correctAnswer) {
+                    chatText.textContent = "I'm here to help! Select an answer or complete the task to get feedback.";
+                } else if (currentQ.type === "mcq" && userAnswers[currentQuestion] === currentQ.correctAnswer) {
                     chatText.textContent = "Excellent! You're following firm policy correctly.";
+                } else if (currentQ.feedback && currentQ.feedback.aiComment) {
+                     chatText.textContent = currentQ.feedback.aiComment;
                 } else {
-                    chatText.textContent = quizQuestions[currentQuestion].feedback.aiComment;
+                    chatText.textContent = "I see your answer! What else can I help you with?";
                 }
             }
         }
