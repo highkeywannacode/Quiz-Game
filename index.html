@@ -1580,19 +1580,33 @@
                 }
                 proceed = true;
             } else if (currentQ.type === "sort") {
-                // Check if the sort is complete and correct
-                const isCorrectlySorted = checkSortCompletion();
+                // Check if all items have been placed into a bin (regardless of correctness)
+                const currentAnswers = userAnswers[currentQuestion];
+                let allItemsPlacedInBins = true;
 
-                if (userAnswers[currentQuestion] === null || typeof userAnswers[currentQuestion] !== 'boolean') {
-                    showKaiMessage("Please ensure all items are sorted into the bins before proceeding.");
+                if (currentAnswers === null || typeof currentAnswers !== 'object' || Array.isArray(currentAnswers)) {
+                    allItemsPlacedInBins = false;
+                } else {
+                    currentQ.items.forEach(itemData => {
+                        const itemAnswer = currentAnswers[itemData.text];
+                        // An item is considered "not placed" if its answer is missing or explicitly 'unsorted'
+                        if (!itemAnswer || itemAnswer === 'unsorted') {
+                            allItemsPlacedInBins = false;
+                        }
+                    });
+                }
+
+                if (!allItemsPlacedInBins) {
+                    showKaiMessage("Please ensure all documents are placed into a Confidential or Public bin before moving forward.");
                     return;
                 }
                 
-                if (!isCorrectlySorted) {
-                    showKaiMessage("Some items are in the wrong bin! Please correct your sorting.");
-                    return;
-                }
-                proceed = true;
+                // Perform the check for correctness to update state and show final feedback
+                checkSortCompletion(); 
+                
+                // Allow proceeding even if the answer is incorrect, as long as it's been attempted (all placed)
+                proceed = true; 
+
             } else if (currentQ.type === "truefalse") {
                 if (userAnswers[currentQuestion] === null) {
                     showKaiMessage("Please select True or False before proceeding.");
@@ -1608,10 +1622,8 @@
                 }
                 
                 proceed = checkMatchCompletion();
-                if (!proceed) {
-                    showKaiMessage("Some matches are incorrect. Please correct them before proceeding.");
-                    return;
-                }
+                // Allow proceeding even if the answer is incorrect, as long as it's been attempted (all matched)
+                proceed = true; 
             } else {
                 proceed = true;
             }
@@ -1901,3 +1913,4 @@
     </script>
 </body>
 </html>
+
