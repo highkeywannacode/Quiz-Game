@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Khaitan & Co. - Quiz with KAI Assistant</title>
     <style>
-        /* ... (Your existing CSS code remains unchanged) ... */
+     
         * {
             margin: 0;
             padding: 0;
@@ -23,7 +23,7 @@
             overflow-x: hidden;
         }
 
-        /* General Container Styles */
+      
         .container {
             background-color: white;
             border-radius: 15px;
@@ -61,7 +61,7 @@
             font-style: italic;
         }
 
-        /* Quiz Styles */
+
         .quiz-container {
             display: none;
             background-color: white;
@@ -489,24 +489,20 @@
             margin-bottom: 20px;
         }
         
-        /* === START OF CHANGES === */
-
-        /* 2nd Change: Game Full Screen */
-        /* Change max-width of media-container to allow it to expand more,
-           and remove the padding so the iframe can touch the edges. */
+   
         .media-container.full-screen {
-            max-width: 100%; /* Allow it to take up more screen space */
-            width: 100vw; /* Take full viewport width */
-            height: 100vh; /* Take full viewport height */
-            margin: 0; /* Remove margin/spacing from body's flex alignment */
-            padding: 0; /* Remove internal padding */
-            border-radius: 0; /* Optional: remove rounded corners for full screen look */
-            box-shadow: none; /* Optional: remove shadow */
+            max-width: 100%; 
+            width: 100vw;
+            height: 100vh; 
+            margin: 0; 
+            padding: 0; 
+            border-radius: 0; 
+            box-shadow: none; 
         }
         
-        /* The body needs to be able to stretch the media container */
+     
         body.full-screen-game {
-             /* Remove center alignment for a true full screen experience */
+           
             justify-content: flex-start;
             align-items: flex-start;
             padding: 0;
@@ -514,29 +510,26 @@
 
         #game-container {
             width: 100%;
-            height: 100%; /* Change to 100% to fill parent */
-            border: none; /* Remove border for full-screen game */
-            border-radius: 0; /* Remove border radius */
+            height: 100%; 
+            border: none; 
+            border-radius: 0; 
             overflow: hidden;
             display: none;
         }
         
-        /* Ensure the iframe inside the container is also full size */
+      
         #game-container iframe {
             width: 100%;
             height: 100%;
         }
 
-        /* Hide the header and skip button in full screen game mode */
+      
         .media-container.full-screen .header,
         .media-container.full-screen #skip-game-btn {
             display: none;
         }
         
-        /* 1st Change: Video Looping without Controls */
-        /* #quiz-video styles remain the same, changes are in the HTML attributes below */
-
-        /* === END OF CHANGES === */
+   
 
         @keyframes fadeIn {
             from {
@@ -1479,4 +1472,5 @@
     </script>
 </body>
 </html>
+
 
